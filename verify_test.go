@@ -1,14 +1,39 @@
 package openid
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 	"time"
 )
 
+type testDiscoveryStore map[string]*DiscoveryItem
+
+func (s testDiscoveryStore) Put(endpoint string, item *DiscoveryItem) error {
+	s[endpoint] = item
+	return nil
+}
+
+func (s testDiscoveryStore) Get(endpoint string) (*DiscoveryItem, error) {
+	return s[endpoint], nil
+}
+
+type testNonceStore map[string][]NonceItem
+
+func (s testNonceStore) Accept(endpoint string, item NonceItem) error {
+	if items := s[endpoint]; items != nil {
+		for _, i := range items {
+			if i == item {
+				return errors.New("Nonce already exists")
+			}
+		}
+	}
+	return nil
+}
+
 func TestVerifyNonce(t *testing.T) {
 	timeStr := time.Now().UTC().Format(time.RFC3339)
-	ns := NewSimpleNonceStore()
+	ns := make(testNonceStore)
 	v := url.Values{}
 
 	// Initial values
@@ -94,7 +119,7 @@ func doVerifySignedFields(t *testing.T, v url.Values, succeed bool) {
 }
 
 func TestVerifyDiscovered(t *testing.T) {
-	dc := NewSimpleDiscoveryCache()
+	dc := make(testDiscoveryStore)
 	vals := url.Values{"openid.ns": []string{"http://specs.openid.net/auth/2.0"},
 		"openid.mode":        []string{"id_res"},
 		"openid.op_endpoint": []string{"http://example.com/openid/login"},
@@ -114,7 +139,7 @@ Content-Type: application/xrds+xml; charset=UTF-8
 <xrds:XRDS xmlns:xrds="xri://$xrds" xmlns="xri://$xrd*($v*2.0)">
 	<XRD>
 		<Service priority="0">
-			<Type>http://specs.openid.net/auth/2.0/signon</Type>		
+			<Type>http://specs.openid.net/auth/2.0/signon</Type>
 			<URI>http://example.com/openid/login</URI>
 		</Service>
 	</XRD>

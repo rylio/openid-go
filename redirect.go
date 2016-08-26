@@ -5,10 +5,6 @@ import (
 	"strings"
 )
 
-func RedirectURL(id, callbackURL, realm string) (string, error) {
-	return defaultInstance.RedirectURL(id, callbackURL, realm)
-}
-
 func (oid *OpenID) RedirectURL(id, callbackURL, realm string) (string, error) {
 	opEndpoint, opLocalID, claimedID, err := oid.Discover(id)
 	if err != nil {

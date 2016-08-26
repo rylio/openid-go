@@ -18,9 +18,6 @@ package openid
 // "http://specs.openid.net/auth/2.0/identifier_select" MUST be
 // used as both the Claimed Identifier and the OP-Local Identifier
 // when an OP Identifier is entered.
-func Discover(id string) (opEndpoint, opLocalID, claimedID string, err error) {
-	return defaultInstance.Discover(id)
-}
 
 func (oid *OpenID) Discover(id string) (opEndpoint, opLocalID, claimedID string, err error) {
 	// From OpenID specs, 7.2: Normalization

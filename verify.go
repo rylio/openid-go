@@ -6,13 +6,10 @@ import (
 	"io/ioutil"
 	"net/url"
 	"strings"
+	"time"
 )
 
-func Verify(uri string, cache DiscoveryCache, nonceStore NonceStore) (id string, err error) {
-	return defaultInstance.Verify(uri, cache, nonceStore)
-}
-
-func (oid *OpenID) Verify(uri string, cache DiscoveryCache, nonceStore NonceStore) (id string, err error) {
+func (oid *OpenID) Verify(uri string, discoveryStore DiscoveryStore, nonceStore NonceStore) (id string, err error) {
 	parsedURL, err := url.Parse(uri)
 	if err != nil {
 		return "", err
@@ -45,7 +42,7 @@ func (oid *OpenID) Verify(uri string, cache DiscoveryCache, nonceStore NonceStor
 
 	// - Discovered information matches the information in the assertion
 	//   (Section 11.2)
-	if err = oid.verifyDiscovered(parsedURL, values, cache); err != nil {
+	if err = oid.verifyDiscovered(parsedURL, values, discoveryStore); err != nil {
 		return "", err
 	}
 
@@ -127,7 +124,7 @@ func compareQueryParams(q1, q2 url.Values) error {
 	return nil
 }
 
-func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, cache DiscoveryCache) error {
+func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, store DiscoveryStore) error {
 	version := vals.Get("openid.ns")
 	if version != "http://specs.openid.net/auth/2.0" {
 		return errors.New("Bad protocol version")
@@ -169,10 +166,10 @@ func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, cache Discove
 	// information in the assertion MUST be present in the
 	// discovered information. The Claimed Identifier MUST NOT be an
 	// OP Identifier.
-	if discovered := cache.Get(claimedIDVerify); discovered != nil &&
-		discovered.OpEndpoint() == endpoint &&
-		discovered.OpLocalID() == localID &&
-		discovered.ClaimedID() == claimedIDVerify {
+	if discovered, err := store.Get(claimedIDVerify); err == nil && discovered != nil &&
+		discovered.OpEndpoint == endpoint &&
+		discovered.OpLocalID == localID &&
+		discovered.ClaimedID == claimedIDVerify {
 		return nil
 	}
 
@@ -189,7 +186,7 @@ func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, cache Discove
 			// endpoint is authorized to make assertions about that claimed ID.
 			// TODO: There may be multiple endpoints found during discovery.
 			// They should all be checked.
-			cache.Put(claimedIDVerify, &SimpleDiscoveredInfo{opEndpoint: endpoint, opLocalID: localID, claimedID: claimedIDVerify})
+			store.Put(claimedIDVerify, &DiscoveryItem{OpEndpoint: endpoint, OpLocalID: localID, ClaimedID: claimedIDVerify})
 			return nil
 		}
 	}
@@ -198,9 +195,20 @@ func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, cache Discove
 }
 
 func verifyNonce(vals url.Values, store NonceStore) error {
-	nonce := vals.Get("openid.response_nonce")
+	nonceStr := vals.Get("openid.response_nonce")
 	endpoint := vals.Get("openid.op_endpoint")
-	return store.Accept(endpoint, nonce)
+	if len(nonceStr) < 20 || len(nonceStr) > 256 {
+		return errors.New("Invalid nonce")
+	}
+	t, err := time.Parse(time.RFC3339, nonceStr[:20])
+	if err != nil {
+		return err
+	}
+
+	return store.Accept(endpoint, NonceItem{
+		Time:  t,
+		Nonce: nonceStr[20:],
+	})
 }
 
 func verifySignature(uri string, vals url.Values, getter httpGetter) error {
@@ -229,6 +237,9 @@ func verifySignature(uri string, vals url.Values, getter httpGetter) error {
 	}
 	defer resp.Body.Close()
 	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
 	response := string(content)
 	lines := strings.Split(response, "\n")
 
