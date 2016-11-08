@@ -16,7 +16,11 @@ type NonceStore struct {
 }
 
 func NewNonceStore() *NonceStore {
-	return &NonceStore{store: make(map[string][]openid.NonceItem), mutex: &sync.Mutex{}}
+	return &NonceStore{
+		store:       make(map[string][]openid.NonceItem),
+		mutex:       &sync.Mutex{},
+		MaxNonceAge: time.Minute,
+	}
 }
 
 func (d *NonceStore) Accept(endpoint string, nonce openid.NonceItem) error {
