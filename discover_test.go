@@ -33,21 +33,21 @@ func TestDiscoverBadUrl(t *testing.T) {
 }
 
 func expectOpIDErr(t *testing.T, uri, exOpEndpoint, exOpLocalID, exClaimedID string, exErr bool) {
-	opEndpoint, opLocalID, claimedID, err := testInstance.Discover(uri)
+	item, err := testInstance.Discover(uri)
 	if (err != nil) != exErr {
 		t.Errorf("Unexpected error: '%s'", err)
 	} else {
-		if opEndpoint != exOpEndpoint {
+		if item.OpEndpoint != exOpEndpoint {
 			t.Errorf("Extracted Endpoint does not match: Exepect %s, Got %s",
-				exOpEndpoint, opEndpoint)
+				exOpEndpoint, item.OpEndpoint)
 		}
-		if opLocalID != exOpLocalID {
+		if item.OpLocalID != exOpLocalID {
 			t.Errorf("Extracted LocalId does not match: Exepect %s, Got %s",
-				exOpLocalID, opLocalID)
+				exOpLocalID, item.OpLocalID)
 		}
-		if claimedID != exClaimedID {
+		if item.ClaimedID != exClaimedID {
 			t.Errorf("Extracted ClaimedID does not match: Exepect %s, Got %s",
-				exClaimedID, claimedID)
+				exClaimedID, item.ClaimedID)
 		}
 	}
 }

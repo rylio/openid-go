@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (oid *OpenID) Verify(uri string, discoveryStore DiscoveryStore, nonceStore NonceStore) (id string, err error) {
+func (oid *Client) Verify(uri string, discoveryStore DiscoveryStore, nonceStore NonceStore) (id string, err error) {
 	parsedURL, err := url.Parse(uri)
 	if err != nil {
 		return "", err
@@ -124,7 +124,7 @@ func compareQueryParams(q1, q2 url.Values) error {
 	return nil
 }
 
-func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, store DiscoveryStore) error {
+func (oid *Client) verifyDiscovered(uri *url.URL, vals url.Values, store DiscoveryStore) error {
 	version := vals.Get("openid.ns")
 	if version != "http://specs.openid.net/auth/2.0" {
 		return errors.New("Bad protocol version")
@@ -180,8 +180,8 @@ func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, store Discove
 	// assertion), the Relying Party MUST perform discovery on the Claimed
 	// Identifier in the response to make sure that the OP is authorized to
 	// make assertions about the Claimed Identifier.
-	if ep, _, _, err := oid.Discover(claimedID); err == nil {
-		if ep == endpoint {
+	if item, err := oid.Discover(claimedID); err == nil {
+		if item.OpEndpoint == endpoint {
 			// This claimed ID points to the same endpoint, therefore this
 			// endpoint is authorized to make assertions about that claimed ID.
 			// TODO: There may be multiple endpoints found during discovery.
@@ -197,7 +197,7 @@ func (oid *OpenID) verifyDiscovered(uri *url.URL, vals url.Values, store Discove
 func verifyNonce(vals url.Values, store NonceStore) error {
 	nonceStr := vals.Get("openid.response_nonce")
 	endpoint := vals.Get("openid.op_endpoint")
-	if len(nonceStr) < 20 || len(nonceStr) > 256 {
+	if len(nonceStr) < 20 || len(nonceStr) > 255 {
 		return errors.New("Invalid nonce")
 	}
 	t, err := time.Parse(time.RFC3339, nonceStr[:20])

@@ -5,15 +5,15 @@ import (
 	"strings"
 )
 
-func (oid *OpenID) RedirectURL(id, callbackURL, realm string) (string, error) {
-	opEndpoint, opLocalID, claimedID, err := oid.Discover(id)
+func (oid *Client) RedirectURL(id, callbackURL, realm string) (string, error) {
+	item, err := oid.Discover(id)
 	if err != nil {
 		return "", err
 	}
-	return BuildRedirectURL(opEndpoint, opLocalID, claimedID, callbackURL, realm)
+	return BuildRedirectURL(item, callbackURL, realm)
 }
 
-func BuildRedirectURL(opEndpoint, opLocalID, claimedID, returnTo, realm string) (string, error) {
+func BuildRedirectURL(item DiscoveryItem, returnTo, realm string) (string, error) {
 	values := make(url.Values)
 	values.Add("openid.ns", "http://specs.openid.net/auth/2.0")
 	values.Add("openid.mode", "checkid_setup")
@@ -21,14 +21,14 @@ func BuildRedirectURL(opEndpoint, opLocalID, claimedID, returnTo, realm string) 
 
 	// 9.1.  Request Parameters
 	// "openid.claimed_id" and "openid.identity" SHALL be either both present or both absent.
-	if len(claimedID) > 0 {
-		values.Add("openid.claimed_id", claimedID)
-		if len(opLocalID) > 0 {
-			values.Add("openid.identity", opLocalID)
+	if len(item.ClaimedID) > 0 {
+		values.Add("openid.claimed_id", item.ClaimedID)
+		if len(item.OpLocalID) > 0 {
+			values.Add("openid.identity", item.OpLocalID)
 		} else {
 			// If a different OP-Local Identifier is not specified,
 			// the claimed identifier MUST be used as the value for openid.identity.
-			values.Add("openid.identity", claimedID)
+			values.Add("openid.identity", item.ClaimedID)
 		}
 	} else {
 		// 7.3.1.  Discovered Information
@@ -44,8 +44,8 @@ func BuildRedirectURL(opEndpoint, opLocalID, claimedID, returnTo, realm string) 
 		values.Add("openid.realm", realm)
 	}
 
-	if strings.Contains(opEndpoint, "?") {
-		return opEndpoint + "&" + values.Encode(), nil
+	if strings.Contains(item.OpEndpoint, "?") {
+		return item.OpEndpoint + "&" + values.Encode(), nil
 	}
-	return opEndpoint + "?" + values.Encode(), nil
+	return item.OpEndpoint + "?" + values.Encode(), nil
 }

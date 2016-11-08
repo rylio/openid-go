@@ -2,7 +2,6 @@ package simplestore
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"sync"
 	"time"
@@ -10,26 +9,25 @@ import (
 	"github.com/rylio/openid-go"
 )
 
-var maxNonceAge = flag.Duration("openid-max-nonce-age",
-	60*time.Second,
-	"Maximum accepted age for openid nonces. The bigger, the more"+
-		"memory is needed to store used nonces.")
-
-type SimpleNonceStore struct {
-	store map[string][]openid.NonceItem
-	mutex *sync.Mutex
+type NonceStore struct {
+	store       map[string][]openid.NonceItem
+	mutex       *sync.Mutex
+	MaxNonceAge time.Duration
 }
 
-func NewSimpleNonceStore() *SimpleNonceStore {
-	return &SimpleNonceStore{store: make(map[string][]openid.NonceItem), mutex: &sync.Mutex{}}
+func NewNonceStore() *NonceStore {
+	return &NonceStore{store: make(map[string][]openid.NonceItem), mutex: &sync.Mutex{}}
 }
 
-func (d *SimpleNonceStore) Accept(endpoint string, nonce openid.NonceItem) error {
+func (d *NonceStore) Accept(endpoint string, nonce openid.NonceItem) error {
 
 	now := time.Now()
 	diff := now.Sub(nonce.Time)
-	if diff > *maxNonceAge {
+	if diff > d.MaxNonceAge {
 		return fmt.Errorf("Nonce too old: %ds", diff.Seconds())
+	}
+	if len(nonce.Nonce) > 235 {
+		return fmt.Errorf("Nonce too long")
 	}
 
 	// Meh.. now we have to use a mutex, to protect that map from
@@ -47,7 +45,7 @@ func (d *SimpleNonceStore) Accept(endpoint string, nonce openid.NonceItem) error
 				// we have been building so far...
 				return errors.New("Nonce already used")
 			}
-			if now.Sub(n.Time) < *maxNonceAge {
+			if now.Sub(n.Time) < d.MaxNonceAge {
 				newNonces = append(newNonces, n)
 			}
 		}

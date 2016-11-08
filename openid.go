@@ -4,10 +4,10 @@ import (
 	"net/http"
 )
 
-type OpenID struct {
+type Client struct {
 	urlGetter httpGetter
 }
 
-func NewOpenID(client *http.Client) *OpenID {
-	return &OpenID{urlGetter: &defaultGetter{client: client}}
+func New(client *http.Client) *Client {
+	return &Client{urlGetter: &defaultGetter{client: client}}
 }

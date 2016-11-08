@@ -6,16 +6,16 @@ import (
 	"github.com/rylio/openid-go"
 )
 
-type SimpleDiscoveryStore struct {
+type DiscoveryStore struct {
 	cache map[string]*openid.DiscoveryItem
 	mutex *sync.Mutex
 }
 
-func NewSimpleDiscoveryStore() *SimpleDiscoveryStore {
-	return &SimpleDiscoveryStore{cache: make(map[string]*openid.DiscoveryItem), mutex: &sync.Mutex{}}
+func NewDiscoveryStore() *DiscoveryStore {
+	return &DiscoveryStore{cache: make(map[string]*openid.DiscoveryItem), mutex: &sync.Mutex{}}
 }
 
-func (s *SimpleDiscoveryStore) Put(id string, item *openid.DiscoveryItem) error {
+func (s *DiscoveryStore) Put(id string, item *openid.DiscoveryItem) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -23,7 +23,7 @@ func (s *SimpleDiscoveryStore) Put(id string, item *openid.DiscoveryItem) error 
 	return nil
 }
 
-func (s *SimpleDiscoveryStore) Get(id string) (*openid.DiscoveryItem, error) {
+func (s *DiscoveryStore) Get(id string) (*openid.DiscoveryItem, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

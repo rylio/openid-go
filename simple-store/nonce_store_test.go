@@ -3,41 +3,46 @@ package simplestore
 import (
 	"testing"
 	"time"
+
+	openid "github.com/rylio/openid-go"
 )
 
-func TestDefaultNonceStore(t *testing.T) {
-	*maxNonceAge = 60 * time.Second
+func TestNonceStore(t *testing.T) {
 	now := time.Now().UTC()
 	// 30 seconds ago
 	now30s := now.Add(-30 * time.Second)
 	// 2 minutes ago
 	now2m := now.Add(-2 * time.Minute)
 
-	now30sStr := now30s.Format(time.RFC3339)
-	now2mStr := now2m.Format(time.RFC3339)
+	//now30sStr := now30s.Format(time.RFC3339)
+	//now2mStr := now2m.Format(time.RFC3339)
 
-	ns := NewSimpleNonceStore()
-	reject(t, ns, "1", "foo")                        // invalid nonce
-	reject(t, ns, "1", "fooBarBazLongerThan20Chars") // invalid nonce
+	ns := NewNonceStore()
+	ns.MaxNonceAge = time.Minute
+	var s string
+	for i := 0; i < 300; i++ {
+		s += "a"
+	}
+	reject(t, ns, "1", openid.NonceItem{now, s}) // invalid nonce
 
-	accept(t, ns, "1", now30sStr+"asd")
-	reject(t, ns, "1", now30sStr+"asd") // same nonce
-	accept(t, ns, "1", now30sStr+"xxx") // different nonce
-	reject(t, ns, "1", now30sStr+"xxx") // different nonce again to verify storage of multiple nonces per endpoint
-	accept(t, ns, "2", now30sStr+"asd") // different endpoint
+	accept(t, ns, "1", openid.NonceItem{now30s, "asd"})
+	reject(t, ns, "1", openid.NonceItem{now30s, "asd"}) // same nonce
+	accept(t, ns, "1", openid.NonceItem{now30s, "xxx"}) // different nonce
+	reject(t, ns, "1", openid.NonceItem{now30s, "xxx"}) // different nonce again to verify storage of multiple nonces per endpoint
+	accept(t, ns, "2", openid.NonceItem{now30s, "asd"}) // different endpoint
 
-	reject(t, ns, "1", now2mStr+"old") // too old
-	reject(t, ns, "3", now2mStr+"old") // too old
+	reject(t, ns, "1", openid.NonceItem{now2m, "old"}) // too old
+	reject(t, ns, "3", openid.NonceItem{now2m, "old"}) // too old
 }
 
-func accept(t *testing.T, ns NonceStore, op, nonce string) {
+func accept(t *testing.T, ns *NonceStore, op string, nonce openid.NonceItem) {
 	e := ns.Accept(op, nonce)
 	if e != nil {
 		t.Errorf("Should accept %s nonce %s", op, nonce)
 	}
 }
 
-func reject(t *testing.T, ns NonceStore, op, nonce string) {
+func reject(t *testing.T, ns *NonceStore, op string, nonce openid.NonceItem) {
 	e := ns.Accept(op, nonce)
 	if e == nil {
 		t.Errorf("Should reject %s nonce %s", op, nonce)
